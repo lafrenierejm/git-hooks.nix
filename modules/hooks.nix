@@ -332,7 +332,7 @@ in
             nativeBuildInputs = [ pkgs.makeWrapper ];
             postBuild = ''
               wrapProgram $out/bin/cargo-clippy \
-                --prefix PATH : ${lib.makeBinPath [ tools.cargo ]}
+                --prefix PATH : ${lib.makeBinPath [ tools.cargo tools.clippy ]}
             '';
           };
         in
