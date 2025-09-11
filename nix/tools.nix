@@ -10,6 +10,7 @@
 , cabal2nix
 , callPackage
 , cargo
+, cargo-deny
 , checkmake
 , circleci-cli
 , llvmPackages_latest
@@ -116,6 +117,7 @@ in
     cabal-fmt
     cabal-gild
     cargo
+    cargo-deny
     checkmake
     circleci-cli
     clippy

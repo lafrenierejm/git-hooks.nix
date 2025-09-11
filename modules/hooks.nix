@@ -232,6 +232,49 @@ in
           };
         };
       };
+      cargo-deny = mkOption {
+        description = "cargo-deny hook";
+        type = types.submodule
+          ({ config, ... }: {
+            imports = [ hookModule ];
+            options.packageOverrides = {
+              cargo = mkOption {
+                type = types.package;
+                description = "The cargo package to use";
+              };
+              cargo-deny = mkOption {
+                type = types.package;
+                description = "The cargo-deny package to use";
+              };
+            };
+            options.settings = {
+              advisories = mkOption {
+                type = types.bool;
+                description = "Detect issues for crates by looking in an advisory database";
+                default = true;
+              };
+              bans = mkOption {
+                type = types.bool;
+                description = "Deny (or allow) specific crates, as well as detect and handle multiple versions of the same crate";
+                default = true;
+              };
+              licenses = mkOption {
+                type = types.bool;
+                description = "Check whether every crate you use has license terms you find acceptable";
+                default = true;
+              };
+              sources = mkOption {
+                type = types.bool;
+                description = "Check whether crates only come from sources you trust.";
+                default = true;
+              };
+            };
+            config.extraPackages = [
+              config.packageOverrides.cargo
+              config.packageOverrides.cargo-deny
+            ];
+          });
+      };
       clippy = mkOption {
         description = "clippy hook";
         type = types.submodule
@@ -2228,6 +2271,37 @@ in
           package = tools.cargo;
           entry = "${hooks.cargo-check.package}/bin/cargo check ${cargoManifestPathArg}";
           files = "\\.rs$";
+          pass_filenames = false;
+        };
+      cargo-deny =
+        let
+          inherit (hooks.cargo-deny) packageOverrides;
+          wrapper = pkgs.symlinkJoin {
+            name = "cargo-deny-wrapped";
+            paths = [ packageOverrides.cargo-deny ];
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postBuild = ''
+              wrapProgram $out/bin/cargo-deny \
+                --prefix PATH : ${lib.makeBinPath [ packageOverrides.cargo-deny ]}
+            '';
+          };
+        in
+        {
+          name = "cargo-deny";
+          description = "Lint Cargo dependencies.";
+          package = wrapper;
+          packageOverrides = { cargo = tools.cargo; cargo-deny = tools.cargo-deny; };
+          entry =
+            let
+              checks = mkCmdArgs (with hooks.carg-deny.settings; [
+                [ advisories "advisories" ]
+                [ bans "bans" ]
+                [ licenses "licenses" ]
+                [ sources "sources" ]
+              ]);
+            in
+            "${hooks.cargo-deny.package}/bin/cargo-deny deny ${cargoManifestPathArg} check ${checks}";
+          files = "Cargo\\.{lock|toml}$";
           pass_filenames = false;
         };
       checkmake = {
